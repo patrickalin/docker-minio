@@ -1,0 +1,51 @@
+version: '3.5'
+
+services:
+  miniofiles:
+    image: minio-image
+    env_file:
+      - .env
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.port=9000
+        - traefik.frontend.rule=Host:minio.services.alin.be
+        - traefik.frontend.entryPoints=http,https
+        - traefik.backend.loadbalancer.method=wrr
+    environment:
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password
+    volumes:
+      - ./data:/data
+    command: server /data
+
+  minioexporter:
+    image: joepll/minio-exporter:v0.2.0
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.port=9290
+        - traefik.frontend.rule=Host:minio-exporter.services.alin.be
+        - traefik.frontend.entryPoints=http,https
+        - traefik.backend.loadbalancer.method=wrr
+    environment:
+      - MINIO_URL=http://minio.services.alin.be/
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_ACCESS_SECRET=password
+
+networks:
+  default:
+    external:
+      name: traefik-net
